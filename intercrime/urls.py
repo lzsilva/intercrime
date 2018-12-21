@@ -19,5 +19,6 @@ from intercrime import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('exibir_mapa/', views.exibir_mapa)
+    path('exibir_mapa/', views.exibir_mapa),
+    path('relatorios/', views.relatorios)
 ]

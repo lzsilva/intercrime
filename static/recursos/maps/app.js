@@ -1,5 +1,6 @@
 // See post: http://asmaloney.com/2015/06/code/clustering-markers-on-leaflet-maps
 
+var csrftoken = getCookie('csrftoken');
 
 var map = L.map('map', {
     center: [10.0, 5.0],
@@ -44,49 +45,70 @@ legend.onAdd = function (map) {
 legend.addTo(map);
 
 crimeClicado = 'Crime';
-
-$('select').on('change', function () {
-    crimeClicado = this.value;
-    initMap(crimeClicado);
-});
-
-// anoClicado = undefined;
-//
-// $('#ano1, #ano2, #ano3').click(function () {
-//   if (this.id == 'ano1') {
-//     anoClicado = '2018';
-//   }
-//   else if (this.id == 'ano2') {
-//     anoClicado = '2017';
-//   }
-//   else if (this.id == 'ano3') {
-//     anoClicado = '2016';
-//   }
-//   initMap(crimeClicado, anoClicado);
-// });
-
 dateInicial = undefined;
 dateFinal = undefined;
 
+url_base = "http://localhost:8010/exibir_mapa/";
+
+url_busca = ""
+
+url_data_inicio = '';
+url_data_fim = '';
+
+$('select').on('change', function () {
+    crimeClicado = this.value;
+
+    url_crime = '?crime_escolhido=' + crimeClicado;
+
+
+    url_busca = url_base + url_crime + "&data_inicio=" + url_data_inicio + "&data_fim=" + url_data_fim;
+
+    window.location.href = url_busca;
+
+});
+
+
 $('#date-input1').change(function () {
     if ($('#date-input1').val() !== '') {
-        dateInicial = $('#date-input1').val() + 'T00:01:00.000Z';
-
-        if($('#date-input2').val() === '')
-            initMap(crimeClicado, dateInicial, dateInicial);
-        else
-            initMap(crimeClicado, dateInicial, dateFinal);
+        dateInicial = $('#date-input1').val();
+        url_data_inicio = dateInicial;
+        //
+        // $.ajax({
+        //     method: 'GET',
+        //     url: '',
+        //     data: {"data_inicio":dateInicial, "data_fim": dateFinal, "crime_escolhido":crimeClicado},
+        //     success: function (data) {
+        //         console.log(data);
+        //     },
+        //     error: function (data) {
+        //     }
+        // });
+        //
+        // if($('#date-input2').val() === '')
+        //     initMap(crimeClicado, dateInicial, dateInicial);
+        // else
+        //     initMap(crimeClicado, dateInicial, dateFinal);
     }
 });
 
 $('#date-input2').change(function () {
     if ($('#date-input2').val() !== '') {
-        dateFinal = $('#date-input2').val() + 'T00:01:00.000Z';
-
-        if($('#date-input1').val() === '')
-            initMap(crimeClicado, dateFinal, dateFinal);
-        else
-            initMap(crimeClicado, dateInicial, dateFinal);
+        dateFinal = $('#date-input2').val();
+        url_data_fim = dateFinal;
+        // $.ajax({
+        //     method: 'GET',
+        //     url: '',
+        //     data: {"data_inicio":dateInicial, "data_fim": dateFinal, "crime_escolhido":crimeClicado},
+        //     success: function (data) {
+        //     },
+        //     error: function (data) {
+        //     }
+        // });
+        //
+        // if($('#date-input1').val() === '')
+        //     initMap(crimeClicado, dateFinal, dateFinal);
+        // else
+        //     initMap(crimeClicado, dateInicial, dateFinal);
     }
 });
 
@@ -107,78 +129,101 @@ var myIcon = L.icon({
 
 var markerClusters = L.markerClusterGroup();
 
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 initMap(crimeClicado, dateFinal, dateFinal);
 
 function initMap(crimeClicado, dateInicial, dateFinal) {
 
     markerClusters.clearLayers();
 
-    url = 'http://cidadesinteligentes.lsdi.ufma.br/collector/resources/data/';
-
-    filtros = {"capabilities": ["incidencia_crime"], "matchers": {}};
-
 
     if (!(crimeClicado == '') && !(crimeClicado == 'Crime'))
-        filtros["matchers"]["crime_type.eq"] = crimeClicado;
+        filtros["crime_type"] = crimeClicado;
 
 
-    // if (anoClicado === undefined)
-    //   filtros["matchers"]["year.in"] = [2016, 2017, 2018];
-    // else
-    //   filtros["matchers"]["year.eq"] = anoClicado;
+    $.each(crimes, function (i, crime) {
 
-    // if (dateInicial === '' && dateFinal === '')
-    //   filtros["matchers"]["year.in"] = [2016, 2017, 2018];
+        var houve_prisao = crime.arrest ? 'Sim' : 'Não';
 
-    if (dateInicial !== undefined || dateInicial !== '') {
-        filtros["start_date"] = dateInicial;
-    } else {
-        filtros["start_date"] = "2016-01-01T00:01:00.000Z";
-    }
 
-    if (dateFinal !== undefined || dateFinal !== '') {
-        filtros["end_date"] = dateFinal;
-    } else {
-        filtros["end_date"] = "2018-12-12T00:01:00.000Z";
-    }
+        var popup = '<div id="content">' +
+            '<div id="siteNotice">' +
+            '</div>' +
+            '<h1 id="firstHeading" class="firstHeading">' + crime.crime_type+ '</h1>' +
+            '<div id="bodyContent">' +
+            '<p><b>Location:</b> ' + crime.location_description  + '</p>' +
+            '<p><b>Descrição do crime:</b> ' + crime.description + '</p>' +
+            '<p><b>Bloco:</b> ' + crime.block + '</p>' +
+            '<p><b>Data do evento:</b> ' + crime.date + '</p>' +
+            '<p><b>Houve prisão:</b> ' + houve_prisao + '</p>' +
+            '<p><b>Ano:</b> ' + crime.year + '</p>' +
 
-    $.post(url, filtros, function (data, textStatus) {
+            '<p>Coordenadas:</p>' +
+            '<p><b>Latitude:</b> ' + crime.lat + '</p>' +
+            '<p><b>Longitude:</b> ' + crime.lon + '</p>' +
+            '</div>' +
+            '</div>';
 
-        $.each(data.resources, function (i, recurso) {
-            $.each(recurso.capabilities.incidencia_crime, function (j, crime) {
+        if (crime.lat && crime.lon) {
+            var m = L.marker([crime.lat, crime.lon], {icon: myIcon})
+                .bindPopup(popup);
 
-                var houve_prisao = crime.arrest ? 'Sim' : 'Não';
+            markerClusters.addLayer(m);
+        }
+    });
 
-                var popup = '<div id="content">' +
-                    '<div id="siteNotice">' +
-                    '</div>' +
-                    '<h1 id="firstHeading" class="firstHeading">' + crime.location_description + '</h1>' +
-                    '<div id="bodyContent">' +
-                    '<p><b>Crime primário:</b> ' + crime.crime_type + '</p>' +
-                    '<p><b>Descrição do crime:</b> ' + crime.description + '</p>' +
-                    '<p><b>Bloco:</b> ' + crime.block + '</p>' +
-                    '<p><b>Data do evento:</b> ' + crime.date + '</p>' +
-                    '<p><b>Houve prisão:</b> ' + houve_prisao + '</p>' +
-                    '<p><b>Ano:</b> ' + crime.year + '</p>' +
-
-                    '<p>Coordenadas:</p>' +
-                    '<p><b>Latitude:</b> ' + crime.lat + '</p>' +
-                    '<p><b>Longitude:</b> ' + crime.lon + '</p>' +
-                    '</div>' +
-                    '</div>';
-
-                if (crime.lat && crime.lon) {
-
-                    var m = L.marker([crime.lat, crime.lon], {icon: myIcon})
-                        .bindPopup(popup);
-
-                    markerClusters.addLayer(m);
-                }
-
-            });
-
-        });
-    }, "json");
+    // $.post("", filtros, function (data, textStatus) {
+    //
+    // $.each(data.resources, function (i, recurso) {
+    //     $.each(recurso.capabilities.incidencia_crime, function (j, crime) {
+    //
+    //         var houve_prisao = crime.arrest ? 'Sim' : 'Não';
+    //
+    //         var popup = '<div id="content">' +
+    //             '<div id="siteNotice">' +
+    //             '</div>' +
+    //             '<h1 id="firstHeading" class="firstHeading">' + crime.location_description + '</h1>' +
+    //             '<div id="bodyContent">' +
+    //             '<p><b>Crime primário:</b> ' + crime.crime_type + '</p>' +
+    //             '<p><b>Descrição do crime:</b> ' + crime.description + '</p>' +
+    //             '<p><b>Bloco:</b> ' + crime.block + '</p>' +
+    //             '<p><b>Data do evento:</b> ' + crime.date + '</p>' +
+    //             '<p><b>Houve prisão:</b> ' + houve_prisao + '</p>' +
+    //             '<p><b>Ano:</b> ' + crime.year + '</p>' +
+    //
+    //             '<p>Coordenadas:</p>' +
+    //             '<p><b>Latitude:</b> ' + crime.lat + '</p>' +
+    //             '<p><b>Longitude:</b> ' + crime.lon + '</p>' +
+    //             '</div>' +
+    //             '</div>';
+    //
+    //         if (crime.lat && crime.lon) {
+    //
+    //             var m = L.marker([crime.lat, crime.lon], {icon: myIcon})
+    //                 .bindPopup(popup);
+    //
+    //             markerClusters.addLayer(m);
+    //         }
+    //
+    //     });
+    //
+    // });
+    // }, "json");
 
     map.addLayer(markerClusters);
 
